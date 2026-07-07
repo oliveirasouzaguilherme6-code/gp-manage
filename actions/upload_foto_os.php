@@ -2,157 +2,57 @@
 
 require_once "../config/database.php";
 
-$db=new Database();
-$conn=$db->connect();
+$db = new Database();
+$conn = $db->connect();
 
-$id_os=$_POST['id_os'];
-$etapa=$_POST['etapa'];
+$idOS = $_POST["id_os"];
 
-$nome=uniqid()."_".$_FILES['foto']['name'];
+$descricao = $_POST["descricao"];
 
-move_uploaded_file(
+$nomeFoto = "";
 
-$_FILES['foto']['tmp_name'],
+if(isset($_FILES["foto"]) && $_FILES["foto"]["error"] == 0){
 
-"../uploads/os/".$nome
+    $ext = pathinfo($_FILES["foto"]["name"], PATHINFO_EXTENSION);
 
-);
+    $nomeFoto = uniqid().".".$ext;
 
-$sql=$conn->prepare("
-INSERT INTO anexos
-(
+    move_uploaded_file(
+
+        $_FILES["foto"]["tmp_name"],
+
+        "../uploads/os/".$nomeFoto
+
+    );
+
+}
+
+$sql = $conn->prepare("
+
+INSERT INTO os_fotos(
+
 id_os,
-tipo,
-categoria,
-arquivo,
-etapa
+foto,
+descricao
+
 )
-VALUES
-(
-?,
-'Foto',
-?,
-?,
-?
+
+VALUES(
+
+?,?,?
+
 )
+
 ");
 
 $sql->execute([
 
-$id_os,
-
-$etapa,
-
-$nome,
-
-$etapa
+$idOS,
+$nomeFoto,
+$descricao
 
 ]);
 
-header("Location: ../index.php?page=os_detalhes&id=".$id_os);
+header("Location: ../index.php?page=ver_os&id=".$idOS);
 
-<form
-
-action="actions/upload_foto_os.php"
-
-method="POST"
-
-enctype="multipart/form-data">
-
-<input
-type="hidden"
-name="id_os"
-value="<?=$id?>">
-
-<label>Etapa</label>
-
-<select
-name="etapa"
-class="form-select">
-
-<option>Antes</option>
-
-<option>Durante</option>
-
-<option>Depois</option>
-
-</select>
-
-<input
-
-type="file"
-
-name="foto"
-
-class="form-control mt-3"
-
-required>
-
-<button
-
-class="btn btn-warning mt-3">
-
-Enviar Foto
-
-</button>
-
-</form>
-
-<?php
-
-$sql=$conn->prepare("
-SELECT *
-FROM anexos
-WHERE id_os=?
-ORDER BY id_anexo DESC
-");
-
-$sql->execute([$id]);
-
-?>
-
-<div class="row mt-4">
-
-<?php foreach($sql as $foto): ?>
-
-<div class="col-md-3 mb-3">
-
-<div class="card">
-
-<img
-
-src="uploads/os/<?=$foto['arquivo']?>"
-
-class="card-img-top"
-
-style="height:180px;object-fit:cover;">
-
-<div class="card-body">
-
-<b><?=$foto['categoria']?></b>
-
-<br>
-
-<?=$foto['etapa']?>
-
-<br><br>
-
-<a
-
-href="actions/excluir_foto.php?id=<?=$foto['id_anexo']?>&os=<?=$id?>"
-
-class="btn btn-danger btn-sm w-100">
-
-Excluir
-
-</a>
-
-</div>
-
-</div>
-
-</div>
-
-<?php endforeach; ?>
-
-</div>
+exit;

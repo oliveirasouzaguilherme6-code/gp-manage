@@ -13,6 +13,44 @@ FROM pecas
 WHERE id_peca=?
 ");
 $sql->execute([$_POST['id_peca']]);
+$conn->prepare("
+
+UPDATE ordens_servico
+
+SET valor_pecas=(
+
+SELECT IFNULL(SUM(valor_total),0)
+
+FROM os_pecas
+
+WHERE id_os=?
+
+)
+
+WHERE id_os=?
+
+")->execute([
+
+$_POST["id_os"],
+$_POST["id_os"]
+
+]);
+
+$conn->prepare("
+
+UPDATE ordens_servico
+
+SET valor_total=
+
+valor_pecas+valor_servicos
+
+WHERE id_os=?
+
+")->execute([
+
+$_POST["id_os"]
+
+]);
 
 $peca = $sql->fetch(PDO::FETCH_ASSOC);
 

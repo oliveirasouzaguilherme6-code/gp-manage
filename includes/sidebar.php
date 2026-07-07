@@ -22,6 +22,14 @@
         Veículos
     </a>
 
+    <a href="index.php?page=ordens_servico">
+
+<i class="bi bi-clipboard-check"></i>
+
+Ordens de Serviço
+
+</a>
+
     <a href="index.php?page=orcamentos">
         <i class="bi bi-receipt"></i>
         Orçamentos
@@ -41,6 +49,14 @@
         <i class="bi bi-bar-chart"></i>
         Relatórios
     </a>
+
+    <a href="index.php?page=financeiro">
+
+<i class="bi bi-cash-stack"></i>
+
+Financeiro
+
+</a>
 
     <a href="#">
         <i class="bi bi-gear"></i>

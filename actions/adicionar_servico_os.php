@@ -5,197 +5,77 @@ require_once "../config/database.php";
 $db = new Database();
 $conn = $db->connect();
 
-$sqlServico = $conn->prepare("
-SELECT valor
-FROM servicos
-WHERE id_servico=?
-");
-
-$sqlServico->execute([$_POST['id_servico']]);
-
-$servico = $sqlServico->fetch(PDO::FETCH_ASSOC);
-
-$valor = $servico['valor'];
-$qtd = $_POST['quantidade'];
-$subtotal = $valor * $qtd;
-
 $sql = $conn->prepare("
-INSERT INTO os_servicos
-(
+
+INSERT INTO os_servicos(
+
 id_os,
-id_servico,
-descricao,
+servico,
 quantidade,
-valor,
-subtotal
+valor_unitario,
+valor_total
+
 )
-VALUES
-(?,?,?,?,?,?)
+
+VALUES(
+
+?,?,?,?,?
+
+)
+
 ");
+
+$total = $_POST["quantidade"] * $_POST["valor_unitario"];
 
 $sql->execute([
 
-$_POST['id_os'],
-$_POST['id_servico'],
-$_POST['descricao'],
-$qtd,
-$valor,
-$subtotal
+$_POST["id_os"],
+$_POST["servico"],
+$_POST["quantidade"],
+$_POST["valor_unitario"],
+$total
 
 ]);
 
-header("Location: ../index.php?page=os_detalhes&id=".$_POST['id_os']);
-exit;
+$conn->prepare("
 
-<?php
+UPDATE ordens_servico
 
-$servicos = $conn->query("
-SELECT *
-FROM servicos
-ORDER BY nome
-")->fetchAll(PDO::FETCH_ASSOC);
+SET valor_servicos=(
 
-?>
+SELECT IFNULL(SUM(valor_total),0)
 
-<form action="actions/adicionar_servico_os.php" method="POST">
+FROM os_servicos
 
-<input
-type="hidden"
-name="id_os"
-value="<?=$id?>">
-
-<div class="row">
-
-<div class="col-md-5">
-
-<select
-name="id_servico"
-class="form-select">
-
-<?php foreach($servicos as $s): ?>
-
-<option value="<?=$s['id_servico']?>">
-
-<?=$s['nome']?>
-
-</option>
-
-<?php endforeach; ?>
-
-</select>
-
-</div>
-
-<div class="col-md-3">
-
-<input
-type="number"
-name="quantidade"
-value="1"
-class="form-control">
-
-</div>
-
-<div class="col-md-4">
-
-<button class="btn btn-warning w-100">
-
-Adicionar Serviço
-
-</button>
-
-</div>
-
-</div>
-
-<input
-type="text"
-name="descricao"
-class="form-control mt-3"
-placeholder="Descrição">
-
-</form>
-
-<?php
-
-$sql = $conn->prepare("
-SELECT
-o.*,
-s.nome
-FROM os_servicos o
-INNER JOIN servicos s
-ON s.id_servico=o.id_servico
 WHERE id_os=?
-");
 
-$sql->execute([$id]);
+)
 
-?>
+WHERE id_os=?
 
-<table class="table mt-4">
+")->execute([
 
-<thead>
+$_POST["id_os"],
+$_POST["id_os"]
 
-<tr>
+]);
 
-<th>Serviço</th>
+$conn->prepare("
 
-<th>Qtd</th>
+UPDATE ordens_servico
 
-<th>Valor</th>
+SET valor_total=
 
-<th>Subtotal</th>
+valor_pecas+valor_servicos
 
-</tr>
+WHERE id_os=?
 
-</thead>
+")->execute([
 
-<tbody>
+$_POST["id_os"]
 
-<?php
+]);
 
-$total = 0;
+header("Location: ../index.php?page=ver_os&id=".$_POST["id_os"]);
 
-foreach($sql as $item){
-
-$total += $item['subtotal'];
-
-?>
-
-<tr>
-
-<td><?=$item['nome']?></td>
-
-<td><?=$item['quantidade']?></td>
-
-<td>R$ <?=number_format($item['valor'],2,",",".")?></td>
-
-<td>R$ <?=number_format($item['subtotal'],2,",",".")?></td>
-
-</tr>
-
-<?php } ?>
-
-</tbody>
-
-<tfoot>
-
-<tr>
-
-<th colspan="3">
-
-Total
-
-</th>
-
-<th>
-
-R$ <?=number_format($total,2,",",".")?>
-
-</th>
-
-</tr>
-
-</tfoot>
-
-</table>
+exit;
