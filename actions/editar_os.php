@@ -5,48 +5,34 @@ require_once "../config/database.php";
 $db = new Database();
 $conn = $db->connect();
 
-$numero = "OS".date("YmdHis");
+$conn->prepare("
+UPDATE ordens_servico
+SET
 
-$sql = $conn->prepare("
-INSERT INTO ordens_servico
-(
-numero_os,
-id_cliente,
-id_veiculo,
-status,
-prioridade,
-previsao_entrega,
-valor_mao_obra,
-desconto,
-observacoes
-)
-VALUES
-(?,?,?,?,?,?,?,?,?)
-");
+id_cliente=?,
+id_veiculo=?,
+status=?,
+prioridade=?,
+previsao_entrega=?,
+valor_mao_obra=?,
+desconto=?,
+observacoes=?
 
-$sql->execute([
+WHERE id_os=?
 
-$numero,
+")->execute([
 
 $_POST['id_cliente'],
-
 $_POST['id_veiculo'],
-
 $_POST['status'],
-
 $_POST['prioridade'],
-
 $_POST['previsao_entrega'],
-
 $_POST['valor_mao_obra'],
-
 $_POST['desconto'],
-
-$_POST['observacoes']
+$_POST['observacoes'],
+$_POST['id_os']
 
 ]);
-
-$id_os = $conn->lastInsertId();
 
 $conn->prepare("
 INSERT INTO historico_os
@@ -54,9 +40,9 @@ INSERT INTO historico_os
 VALUES (?,?,?)
 ")->execute([
 
-$id_os,
+$_POST['id_os'],
 
-"Ordem de Serviço criada.",
+"Ordem de Serviço editada.",
 
 "Administrador"
 

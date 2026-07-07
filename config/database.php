@@ -3,7 +3,7 @@
 class Database
 {
     private string $host = "localhost";
-    private string $db = "gp_manager";
+    private string $db = "gp-manager";
     private string $user = "root";
     private string $pass = "";
 

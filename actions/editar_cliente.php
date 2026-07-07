@@ -5,6 +5,8 @@ require_once "../config/database.php";
 $db = new Database();
 $conn = $db->connect();
 
+$id = $_POST['id_cliente'];
+
 $foto = "";
 
 if(isset($_FILES['foto']) && $_FILES['foto']['error']==0){
@@ -13,55 +15,39 @@ if(isset($_FILES['foto']) && $_FILES['foto']['error']==0){
 
     $nomeFoto = uniqid().".".$extensao;
 
-    $destino = "../uploads/clientes/".$nomeFoto;
+    move_uploaded_file(
 
-    move_uploaded_file($_FILES['foto']['tmp_name'],$destino);
+        $_FILES['foto']['tmp_name'],
 
-    $foto = $nomeFoto;
+        "../uploads/clientes/".$nomeFoto
+
+    );
+
+    $foto = ", foto='".$nomeFoto."'";
 
 }
 
 $sql = $conn->prepare("
 
-INSERT INTO clientes
+UPDATE clientes
 
-(
+SET
 
-nome,
+nome=?,
 
-telefone,
+telefone=?,
 
-email,
+email=?,
 
-cpf,
+cpf=?,
 
-cidade,
+cidade=?,
 
-observacoes,
+observacoes=?
 
-foto
+".$foto."
 
-)
-
-VALUES
-
-(
-
-?,
-
-?,
-
-?,
-
-?,
-
-?,
-
-?,
-
-?
-
-)
+WHERE id_cliente=?
 
 ");
 
@@ -79,10 +65,9 @@ $_POST['cidade'],
 
 $_POST['observacoes'],
 
-$foto
+$id
 
 ]);
 
 header("Location: ../index.php?page=clientes");
-
 exit;

@@ -339,3 +339,135 @@ class="form-control">
 </textarea>
 
 </div>
+
+<script>
+
+document.getElementById("id_cliente").addEventListener("change",function(){
+
+let id=this.value;
+
+fetch("actions/buscar_veiculos_cliente.php?id_cliente="+id)
+
+.then(r=>r.json())
+
+.then(lista=>{
+
+let select=document.getElementById("id_veiculo");
+
+select.innerHTML="<option value=''>Selecione</option>";
+
+lista.forEach(v=>{
+
+select.innerHTML+=`
+
+<option value="${v.id_veiculo}">
+
+${v.marca} ${v.modelo} - ${v.placa}
+
+</option>
+
+`;
+
+});
+
+});
+
+});
+
+</script>
+
+<select
+id="id_cliente"
+name="id_cliente"
+class="form-select">
+</select>
+
+<select
+id="id_veiculo"
+name="id_veiculo"
+class="form-select">
+<option>Selecione um cliente</option>
+</select>
+
+<select
+name="status"
+class="form-select">
+
+<option>Novo</option>
+<option>Aguardando Aprovação</option>
+<option>Aguardando Peças</option>
+<option>Funilaria</option>
+<option>Preparação</option>
+<option>Pintura</option>
+<option>Montagem</option>
+<option>Polimento</option>
+<option>Lavagem</option>
+<option>Pronto</option>
+<option>Entregue</option>
+
+</select>
+
+<select
+name="prioridade"
+class="form-select">
+
+<option>Baixa</option>
+<option selected>Média</option>
+<option>Alta</option>
+<option>Urgente</option>
+
+</select>
+
+<input
+type="date"
+name="previsao_entrega"
+class="form-control">
+
+<input
+type="number"
+step="0.01"
+name="valor_mao_obra"
+class="form-control">
+
+<input
+type="number"
+step="0.01"
+name="desconto"
+class="form-control">
+
+<textarea
+name="observacoes"
+class="form-control"
+rows="4"></textarea>
+
+<button
+
+class="btn btn-primary btn-sm"
+
+onclick="editarOS(<?=$os['id_os']?>)">
+
+<i class="bi bi-pencil"></i>
+
+</button>
+
+<a
+
+href="actions/excluir_os.php?id=<?=$os['id_os']?>"
+
+class="btn btn-danger btn-sm"
+
+onclick="return confirm('Excluir Ordem de Serviço?')">
+
+<i class="bi bi-trash"></i>
+
+</a>
+
+<a
+
+href="index.php?page=os_detalhes&id=<?=$os['id_os']?>"
+
+class="btn btn-success btn-sm">
+
+<i class="bi bi-eye"></i>
+
+</a>
