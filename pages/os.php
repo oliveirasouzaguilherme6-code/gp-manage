@@ -12,8 +12,8 @@ c.nome,
 v.modelo,
 v.placa
 FROM ordens_servico os
-INNER JOIN clientes c ON c.id_cliente=os.id_cliente
-INNER JOIN veiculos v ON v.id_veiculo=os.id_veiculo
+INNER JOIN clientes c ON c.id_cliente = os.id_cliente
+INNER JOIN veiculos v ON v.id_veiculo = os.id_veiculo
 ORDER BY os.id_os DESC
 ");
 
@@ -23,32 +23,32 @@ $ordens = $sql->fetchAll(PDO::FETCH_ASSOC);
 
 <div class="d-flex justify-content-between align-items-center mb-4">
 
-<div>
+    <div>
 
-<h2 class="fw-bold">
+        <h2 class="fw-bold">
 
-Ordens de Serviço
+            Ordens de Serviço
 
-</h2>
+        </h2>
 
-<small class="text-muted">
+        <small class="text-muted">
 
-Controle das O.S.
+            Controle das O.S.
 
-</small>
+        </small>
 
-</div>
+    </div>
 
-<button
-class="btn btn-warning"
-data-bs-toggle="modal"
-data-bs-target="#novaOS">
+    <button
+        class="btn btn-warning"
+        data-bs-toggle="modal"
+        data-bs-target="#novaOS">
 
-<i class="bi bi-plus-circle"></i>
+        <i class="bi bi-plus-circle"></i>
 
-Nova O.S.
+        Nova O.S.
 
-</button>
+    </button>
 
 </div>
 
@@ -70,7 +70,7 @@ Nova O.S.
 
 <th>Peças</th>
 
-<th>Serviços</th>
+<th>Mão de Obra</th>
 
 <th>Total</th>
 
@@ -88,6 +88,49 @@ Ações
 
 <?php foreach($ordens as $os): ?>
 
+<?php
+
+$cor="secondary";
+
+switch($os['status']){
+
+case "Recebido":
+$cor="primary";
+break;
+
+case "Aguardando Aprovação":
+$cor="warning";
+break;
+
+case "Aguardando Peças":
+$cor="danger";
+break;
+
+case "Em Serviço":
+$cor="info";
+break;
+
+case "Finalizado":
+$cor="success";
+break;
+
+case "Entregue":
+$cor="dark";
+break;
+
+case "Cancelado":
+$cor="secondary";
+break;
+
+}
+
+$total =
+($os['valor_pecas'] ?? 0)
++
+($os['valor_mao_obra'] ?? 0);
+
+?>
+
 <tr>
 
 <td>
@@ -104,11 +147,15 @@ Ações
 
 <td>
 
+<strong>
+
 <?= htmlspecialchars($os['modelo']); ?>
+
+</strong>
 
 <br>
 
-<small>
+<small class="text-muted">
 
 <?= htmlspecialchars($os['placa']); ?>
 
@@ -118,9 +165,9 @@ Ações
 
 <td>
 
-<span class="badge bg-primary">
+<span class="badge bg-<?= $cor ?>">
 
-<?= $os['status']; ?>
+<?= htmlspecialchars($os['status']); ?>
 
 </span>
 
@@ -130,7 +177,7 @@ Ações
 
 R$
 
-<?= number_format($os['valor_pecas'],2,",","."); ?>
+<?= number_format($os['valor_pecas'] ?? 0,2,",","."); ?>
 
 </td>
 
@@ -138,7 +185,7 @@ R$
 
 R$
 
-<?= number_format($os['valor_servicos'],2,",","."); ?>
+<?= number_format($os['valor_mao_obra'] ?? 0,2,",","."); ?>
 
 </td>
 
@@ -148,7 +195,7 @@ R$
 
 R$
 
-<?= number_format($os['valor_total'],2,",","."); ?>
+<?= number_format($total,2,",","."); ?>
 
 </strong>
 
@@ -163,6 +210,7 @@ class="btn btn-primary btn-sm">
 <i class="bi bi-eye"></i>
 
 </a>
+
 <a
 href="actions/imprimir_os.php?id=<?= $os['id_os']; ?>"
 target="_blank"
@@ -223,11 +271,7 @@ method="POST">
 
 <div class="modal-header">
 
-<h5>
-
-Nova Ordem de Serviço
-
-</h5>
+<h5>Nova Ordem de Serviço</h5>
 
 <button
 type="button"
@@ -249,17 +293,13 @@ name="id_cliente"
 class="form-select"
 required>
 
-<option value="">
-
-Selecione...
-
-</option>
+<option value="">Selecione...</option>
 
 <?php foreach($clientes as $cliente): ?>
 
 <option value="<?= $cliente['id_cliente']; ?>">
 
-<?= $cliente['nome']; ?>
+<?= htmlspecialchars($cliente['nome']); ?>
 
 </option>
 
@@ -278,21 +318,17 @@ name="id_veiculo"
 class="form-select"
 required>
 
-<option value="">
-
-Selecione...
-
-</option>
+<option value="">Selecione...</option>
 
 <?php foreach($veiculos as $veiculo): ?>
 
 <option value="<?= $veiculo['id_veiculo']; ?>">
 
-<?= $veiculo['modelo']; ?>
+<?= htmlspecialchars($veiculo['modelo']); ?>
 
 -
 
-<?= $veiculo['placa']; ?>
+<?= htmlspecialchars($veiculo['placa']); ?>
 
 </option>
 
@@ -302,30 +338,31 @@ Selecione...
 
 </div>
 
-<div class="col-md-4 mt-3">
+<div class="col-md-3 mt-3">
 
-<label>Data Entrada</label>
+<label>Entrada</label>
 
 <input
-type="datetime-local"
-name="data_entrada"
+type="date"
+name="entrada"
 class="form-control"
+value="<?= date('Y-m-d'); ?>"
 required>
 
 </div>
 
-<div class="col-md-4 mt-3">
+<div class="col-md-3 mt-3">
 
 <label>Previsão</label>
 
 <input
 type="date"
-name="previsao_entrega"
+name="previsao"
 class="form-control">
 
 </div>
 
-<div class="col-md-4 mt-3">
+<div class="col-md-3 mt-3">
 
 <label>Status</label>
 
@@ -333,17 +370,36 @@ class="form-control">
 name="status"
 class="form-select">
 
-<option>Aberta</option>
+<option value="Recebido">Recebido</option>
 
-<option>Em andamento</option>
+<option value="Aguardando Aprovação">Aguardando Aprovação</option>
 
-<option>Aguardando Peças</option>
+<option value="Aguardando Peças">Aguardando Peças</option>
 
-<option>Finalizada</option>
+<option value="Em Serviço">Em Serviço</option>
 
-<option>Entregue</option>
+<option value="Finalizado">Finalizado</option>
+
+<option value="Entregue">Entregue</option>
+
+<option value="Cancelado">Cancelado</option>
 
 </select>
+
+</div>
+
+<div class="col-md-3 mt-3">
+
+<label>Mão de Obra</label>
+
+<input
+type="number"
+step="0.01"
+min="0"
+name="valor_mao_obra"
+id="valor_mao_obra"
+class="form-control"
+value="0.00">
 
 </div>
 
@@ -358,41 +414,24 @@ class="form-control"></textarea>
 
 </div>
 
-<hr class="mt-4 mb-4">
+<hr class="mt-4">
 
-<h5>
-
-Peças da Ordem de Serviço
-
-</h5>
-
+<h5>Peças da Ordem de Serviço</h5>
 <table
-class="table table-bordered"
+class="table table-bordered align-middle"
 id="tabelaPecas">
 
-<thead>
+<thead class="table-light">
 
 <tr>
 
 <th>Peça</th>
 
-<th width="120">
+<th width="100">Qtd</th>
 
-Qtd
+<th width="140">Valor Unit.</th>
 
-</th>
-
-<th width="140">
-
-Valor
-
-</th>
-
-<th width="160">
-
-Total
-
-</th>
+<th width="150">Subtotal</th>
 
 </tr>
 
@@ -406,13 +445,9 @@ Total
 
 <select
 name="peca[]"
-class="form-select">
+class="form-select peca">
 
-<option value="">
-
-Selecione...
-
-</option>
+<option value="">Selecione...</option>
 
 <?php foreach($pecas as $peca): ?>
 
@@ -420,11 +455,9 @@ Selecione...
 value="<?= $peca['id_peca']; ?>"
 data-valor="<?= $peca['venda']; ?>">
 
-<?= $peca['peca']; ?>
+<?= htmlspecialchars($peca['peca']); ?>
 
-(Estoque:
-
-<?= $peca['estoque']; ?>)
+(Estoque: <?= $peca['estoque']; ?>)
 
 </option>
 
@@ -480,23 +513,70 @@ Adicionar Peça
 
 </button>
 
-<div class="text-end mt-4">
+<div class="row mt-4">
 
-<h3>
+<div class="col-md-4 ms-auto">
 
-Total da O.S.
+<table class="table">
 
-<span
-id="valorTotalOS"
-class="text-success">
+<tr>
+
+<th>Total Peças</th>
+
+<td class="text-end">
+
+<span id="textoTotalPecas">
 
 R$ 0,00
 
 </span>
 
-</h3>
+</td>
+
+</tr>
+
+<tr>
+
+<th>Mão de Obra</th>
+
+<td class="text-end">
+
+<span id="textoMaoObra">
+
+R$ 0,00
+
+</span>
+
+</td>
+
+</tr>
+
+<tr class="table-warning">
+
+<th>Total O.S.</th>
+
+<td class="text-end">
+
+<strong id="valorTotalOS">
+
+R$ 0,00
+
+</strong>
+
+</td>
+
+</tr>
+
+</table>
 
 </div>
+
+</div>
+
+<input
+type="hidden"
+name="valor_pecas"
+id="valor_pecas">
 
 <input
 type="hidden"
@@ -504,6 +584,11 @@ name="valor_total"
 id="valor_total">
 
 </div>
+
+<input
+type="hidden"
+name="valor_mao_obra_hidden"
+id="valor_mao_obra_hidden">
 
 <div class="modal-footer">
 
@@ -520,11 +605,24 @@ Cancelar
 type="submit"
 class="btn btn-warning">
 
+<i class="bi bi-check-circle"></i>
+
 Salvar Ordem de Serviço
 
 </button>
 
 </div>
+
+
+<input
+type="hidden"
+name="valor_pecas"
+id="valor_pecas">
+
+<input
+type="hidden"
+name="valor_total"
+id="valor_total">
 
 </form>
 
@@ -534,95 +632,128 @@ Salvar Ordem de Serviço
 
 </div>
 
-
 <script>
 
 function ativarEventos(){
 
-document.querySelectorAll("select[name='peca[]']").forEach(function(select){
+    document.querySelectorAll(".peca").forEach(function(select){
 
-select.onchange=function(){
+        select.onchange=function(){
 
-let linha=this.closest("tr");
+            atualizarLinha(this.closest("tr"));
 
-let valor=parseFloat(this.options[this.selectedIndex].dataset.valor || 0);
+        };
 
-linha.querySelector(".valor").value=valor.toFixed(2);
+    });
 
-let qtd=parseFloat(linha.querySelector(".quantidade").value);
+    document.querySelectorAll(".quantidade").forEach(function(input){
 
-linha.querySelector(".total").value=(valor*qtd).toFixed(2);
+        input.onkeyup=function(){
 
-calcularTotal();
+            atualizarLinha(this.closest("tr"));
 
-};
+        };
 
-});
+        input.onchange=input.onkeyup;
 
-document.querySelectorAll(".quantidade").forEach(function(input){
+    });
 
-input.onkeyup=function(){
+}
 
-let linha=this.closest("tr");
+function atualizarLinha(linha){
 
-let valor=parseFloat(linha.querySelector(".valor").value || 0);
+    let select=linha.querySelector(".peca");
 
-linha.querySelector(".total").value=(valor*this.value).toFixed(2);
+    let valor=parseFloat(
+        select.options[select.selectedIndex]?.dataset.valor || 0
+    );
 
-calcularTotal();
+    let qtd=parseFloat(
+        linha.querySelector(".quantidade").value || 0
+    );
 
-};
+    linha.querySelector(".valor").value=
+        valor.toFixed(2);
 
-input.onchange=input.onkeyup;
+    linha.querySelector(".total").value=
+        (valor*qtd).toFixed(2);
 
-});
+    calcularTotal();
 
 }
 
 function calcularTotal(){
 
-let total=0;
+    let totalPecas=0;
 
-document.querySelectorAll(".total").forEach(function(item){
+    document.querySelectorAll(".total").forEach(function(item){
 
-total+=parseFloat(item.value || 0);
+        totalPecas+=parseFloat(item.value || 0);
 
-});
+    });
 
-document.getElementById("valor_total").value=total;
+    let maoObra=parseFloat(
+        document.getElementById("valor_mao_obra").value || 0
+    );
 
-document.getElementById("valorTotalOS").innerHTML=
+    let total=totalPecas+maoObra;
 
-"R$ "+total.toLocaleString("pt-BR",{
+    document.getElementById("textoTotalPecas").innerHTML=
+        "R$ "+totalPecas.toLocaleString("pt-BR",{
+            minimumFractionDigits:2,
+            maximumFractionDigits:2
+        });
 
-minimumFractionDigits:2,
+    document.getElementById("textoMaoObra").innerHTML=
+        "R$ "+maoObra.toLocaleString("pt-BR",{
+            minimumFractionDigits:2,
+            maximumFractionDigits:2
+        });
 
-maximumFractionDigits:2
+    document.getElementById("valorTotalOS").innerHTML=
+        "R$ "+total.toLocaleString("pt-BR",{
+            minimumFractionDigits:2,
+            maximumFractionDigits:2
+        });
 
-});
+    document.getElementById("valor_pecas").value=totalPecas;
+
+    document.getElementById("valor_total").value=total;
 
 }
 
+document.getElementById("valor_mao_obra").addEventListener(
+"keyup",
+calcularTotal
+);
+
+document.getElementById("valor_mao_obra").addEventListener(
+"change",
+calcularTotal
+);
+
 document.getElementById("adicionarPeca").addEventListener("click",function(){
 
-let tbody=document.querySelector("#tabelaPecas tbody");
+    let tbody=document.querySelector("#tabelaPecas tbody");
 
-let linha=tbody.rows[0].cloneNode(true);
+    let linha=tbody.rows[0].cloneNode(true);
 
-linha.querySelector("select").selectedIndex=0;
+    linha.querySelector("select").selectedIndex=0;
 
-linha.querySelector(".quantidade").value=1;
+    linha.querySelector(".quantidade").value=1;
 
-linha.querySelector(".valor").value="";
+    linha.querySelector(".valor").value="";
 
-linha.querySelector(".total").value="";
+    linha.querySelector(".total").value="";
 
-tbody.appendChild(linha);
+    tbody.appendChild(linha);
 
-ativarEventos();
+    ativarEventos();
 
 });
 
 ativarEventos();
+
+calcularTotal();
 
 </script>

@@ -80,6 +80,61 @@
 
                     </li>
 
+
+
+<div class="dropdown">
+
+<button
+class="btn btn-light dropdown-toggle"
+data-bs-toggle="dropdown">
+
+<i class="bi bi-person-circle"></i>
+
+<?= $_SESSION['nome']; ?>
+
+</button>
+
+<ul class="dropdown-menu dropdown-menu-end">
+
+<li>
+
+<a
+class="dropdown-item"
+href="index.php?page=usuarios">
+
+<i class="bi bi-people"></i>
+
+Usuários
+
+</a>
+
+</li>
+
+<li>
+
+<hr class="dropdown-divider">
+
+</li>
+
+<li>
+
+<a
+class="dropdown-item text-danger"
+href="actions/logout.php">
+
+<i class="bi bi-box-arrow-right"></i>
+
+Sair
+
+</a>
+
+</li>
+
+</ul>
+
+</div>
+
+
                     <li>
 
                         <a class="dropdown-item" href="#">

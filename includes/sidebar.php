@@ -58,6 +58,18 @@ Financeiro
 
 </a>
 
+
+
+<a href="index.php?page=usuarios">
+
+<i class="bi bi-person-badge"></i>
+
+Usuários
+
+</a>
+
+
+
     <a href="#">
         <i class="bi bi-gear"></i>
         Configurações

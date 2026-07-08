@@ -8,106 +8,257 @@ $conn = $db->connect();
 $financeiro = $conn->query("
 SELECT *
 FROM financeiro
-ORDER BY data_movimento DESC
-");
+ORDER BY data_vencimento DESC
+")->fetchAll(PDO::FETCH_ASSOC);
 
 ?>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
 
-<h2 class="fw-bold">
+    <h2>Financeiro</h2>
 
-Financeiro
+    <button
+        class="btn btn-warning"
+        data-bs-toggle="modal"
+        data-bs-target="#modalFinanceiro">
 
-</h2>
+        <i class="bi bi-plus-circle"></i>
+        Novo Lançamento
 
-<button
-class="btn btn-success"
-data-bs-toggle="modal"
-data-bs-target="#novoLancamento">
-
-<i class="bi bi-plus-circle"></i>
-
-Novo Lançamento
-
-</button>
+    </button>
 
 </div>
 
 <div class="card-dashboard bg-white p-4">
 
-<table class="table table-hover">
+    <table class="table table-hover align-middle">
 
-<thead>
+        <thead>
 
-<tr>
+            <tr>
 
-<th>Data</th>
+                <th>Tipo</th>
+                <th>Descrição</th>
+                <th>Valor</th>
+                <th>Vencimento</th>
+                <th>Status</th>
+                <th width="150">Ações</th>
 
-<th>Tipo</th>
+            </tr>
 
-<th>Descrição</th>
+        </thead>
 
-<th>Categoria</th>
+        <tbody>
 
-<th>Valor</th>
+        <?php if(count($financeiro)>0): ?>
 
-<th>Status</th>
+            <?php foreach($financeiro as $f): ?>
 
-</tr>
+            <tr>
 
-</thead>
+                <td>
 
-<tbody>
+                    <?php
 
-<?php foreach($financeiro as $item): ?>
+                    if($f['tipo']=="Receita"){
+                        echo "<span class='badge bg-success'>Receber</span>";
+                    }else{
+                        echo "<span class='badge bg-danger'>Pagar</span>";
+                    }
 
-<tr>
+                    ?>
 
-<td>
+                </td>
 
-<?= date("d/m/Y",strtotime($item["data_movimento"])); ?>
+                <td><?= htmlspecialchars($f['descricao']) ?></td>
 
-</td>
+                <td>
 
-<td>
+                    <strong>
 
-<?= $item["tipo"]; ?>
+                    R$ <?= number_format($f['valor'],2,",",".") ?>
 
-</td>
+                    </strong>
 
-<td>
+                </td>
 
-<?= $item["descricao"]; ?>
+                <td>
 
-</td>
+                    <?= date("d/m/Y", strtotime($f['data_vencimento'])) ?>
 
-<td>
+                </td>
 
-<?= $item["categoria"]; ?>
+                <td>
 
-</td>
+                    <?php
 
-<td>
+                    switch($f['status']){
 
-R$
+                        case "Pago":
+                            echo "<span class='badge bg-success'>Pago</span>";
+                            break;
 
-<?= number_format($item["valor"],2,",","."); ?>
+                        case "Cancelado":
+                            echo "<span class='badge bg-danger'>Cancelado</span>";
+                            break;
 
-</td>
+                        default:
+                            echo "<span class='badge bg-warning text-dark'>Pendente</span>";
+                            break;
 
-<td>
+                    }
 
-<?= $item["status"]; ?>
+                    ?>
 
-</td>
+                </td>
 
-</tr>
+                <td>
 
-<?php endforeach; ?>
+                    <a
+                        href="actions/editar_financeiro.php?id=<?=$f['id_financeiro']?>"
+                        class="btn btn-primary btn-sm">
 
-</tbody>
+                        <i class="bi bi-pencil"></i>
 
-</table>
+                    </a>
+
+                    <a
+                        href="actions/excluir_financeiro.php?id=<?=$f['id_financeiro']?>"
+                        class="btn btn-danger btn-sm"
+                        onclick="return confirm('Deseja realmente excluir este lançamento?')">
+
+                        <i class="bi bi-trash"></i>
+
+                    </a>
+
+                </td>
+
+            </tr>
+
+            <?php endforeach; ?>
+
+        <?php else: ?>
+
+            <tr>
+
+                <td colspan="6" class="text-center text-muted py-4">
+
+                    Nenhum lançamento encontrado.
+
+                </td>
+
+            </tr>
+
+        <?php endif; ?>
+
+        </tbody>
+
+    </table>
+
+</div>
+
+<div class="modal fade" id="modalFinanceiro">
+
+    <div class="modal-dialog">
+
+        <div class="modal-content">
+
+            <form action="actions/salvar_financeiro.php" method="POST">
+
+                <div class="modal-header">
+
+                    <h5>Novo Lançamento</h5>
+
+                    <button
+                        class="btn-close"
+                        data-bs-dismiss="modal"></button>
+
+                </div>
+
+                <div class="modal-body">
+
+                    <label>Tipo</label>
+
+                    <select
+                        name="tipo"
+                        class="form-select">
+
+                        <option value="Receita">Receber</option>
+                        <option value="Despesa">Pagar</option>
+
+                    </select>
+
+                    <label class="mt-3">Descrição</label>
+
+                    <input
+                        type="text"
+                        name="descricao"
+                        class="form-control"
+                        required>
+
+                    <label class="mt-3">Valor</label>
+
+                    <input
+                        type="number"
+                        step="0.01"
+                        name="valor"
+                        class="form-control"
+                        required>
+
+                    <label class="mt-3">Vencimento</label>
+
+                    <input
+                        type="date"
+                        name="data_vencimento"
+                        class="form-control">
+
+                    <label class="mt-3">Forma de Pagamento</label>
+
+                    <select
+                        name="forma_pagamento"
+                        class="form-select">
+
+                        <option>Pix</option>
+                        <option>Dinheiro</option>
+                        <option>Cartão</option>
+                        <option>Boleto</option>
+                        <option>Transferência</option>
+
+                    </select>
+
+                    <label class="mt-3">Observações</label>
+
+                    <textarea
+                        name="observacoes"
+                        class="form-control"
+                        rows="3"></textarea>
+
+                </div>
+
+                <div class="modal-footer">
+
+                    <button
+                        type="button"
+                        class="btn btn-secondary"
+                        data-bs-dismiss="modal">
+
+                        Cancelar
+
+                    </button>
+
+                    <button
+                        class="btn btn-warning">
+
+                        Salvar
+
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
 
 </div>
