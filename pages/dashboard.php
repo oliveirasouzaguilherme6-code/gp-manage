@@ -1,3 +1,90 @@
+<?php
+
+require_once "config/database.php";
+
+$db = new Database();
+$conn = $db->connect();
+
+/* Cards */
+
+$totalClientes = $conn->query("
+SELECT COUNT(*) FROM clientes
+")->fetchColumn();
+
+$totalVeiculos = $conn->query("
+SELECT COUNT(*) FROM veiculos
+")->fetchColumn();
+
+$totalOS = $conn->query("
+SELECT COUNT(*) FROM ordens_servico
+WHERE status NOT IN ('Entregue','Cancelado')
+")->fetchColumn();
+
+$totalOrcamentos = $conn->query("
+SELECT COUNT(*) FROM orcamentos
+")->fetchColumn();
+
+$estoqueBaixo = $conn->query("
+SELECT COUNT(*)
+FROM pecas
+WHERE estoque<=5
+")->fetchColumn();
+
+/* Últimas OS */
+
+$ultimasOS = $conn->query("
+SELECT
+os.numero_os,
+os.status,
+c.nome,
+v.modelo
+FROM ordens_servico os
+INNER JOIN clientes c
+ON c.id_cliente=os.id_cliente
+INNER JOIN veiculos v
+ON v.id_veiculo=os.id_veiculo
+ORDER BY os.id_os DESC
+LIMIT 5
+")->fetchAll(PDO::FETCH_ASSOC);
+
+/* Últimos Orçamentos */
+
+$ultimosOrcamentos = $conn->query("
+SELECT
+o.id_orcamento,
+c.nome,
+o.status
+FROM orcamentos o
+INNER JOIN clientes c
+ON c.id_cliente=o.id_cliente
+ORDER BY o.id_orcamento DESC
+LIMIT 5
+")->fetchAll(PDO::FETCH_ASSOC);
+
+
+/* Gráfico O.S. */
+
+$graficoOS = $conn->query("
+SELECT
+status,
+COUNT(*) total
+FROM ordens_servico
+GROUP BY status
+")->fetchAll(PDO::FETCH_ASSOC);
+
+$labels=[];
+
+$dados=[];
+
+foreach($graficoOS as $g){
+
+    $labels[]=$g['status'];
+
+    $dados[]=$g['total'];
+
+}
+
+?>
 
 
 
@@ -17,7 +104,7 @@
             <div class="d-flex justify-content-between align-items-center">
                 <div>
                     <small class="text-muted">Veículos em Serviço</small>
-                    <h2 class="mt-2 fw-bold">15</h2>
+                    <h2 class="mt-2 fw-bold"><?= $totalOS ?></h2>
                 </div>
 
                 <div class="icon orange">
@@ -32,7 +119,7 @@
             <div class="d-flex justify-content-between align-items-center">
                 <div>
                     <small class="text-muted">Serviços Agendados</small>
-                    <h2 class="mt-2 fw-bold">8</h2>
+                    <h2 class="mt-2 fw-bold"><?= $totalVeiculos ?></h2>
                 </div>
 
                 <div class="icon blue">
@@ -47,7 +134,7 @@
             <div class="d-flex justify-content-between align-items-center">
                 <div>
                     <small class="text-muted">Orçamentos</small>
-                    <h2 class="mt-2 fw-bold">21</h2>
+                    <h2 class="mt-2 fw-bold"><?= $totalOrcamentos ?></h2>
                 </div>
 
                 <div class="icon green">
@@ -62,7 +149,7 @@
             <div class="d-flex justify-content-between align-items-center">
                 <div>
                     <small class="text-muted">Peças Pendentes</small>
-                    <h2 class="mt-2 fw-bold">6</h2>
+                    <h2 class="mt-2 fw-bold"><?= $estoqueBaixo ?></h2>
                 </div>
 
                 <div class="icon red">
@@ -208,55 +295,102 @@
         <div class="card-dashboard">
 
             <h4 class="mb-4">
-                Peças Aguardando
+                Últimos Orçamentos
+
             </h4>
 
             <table class="table table-hover">
 
-                <thead>
+<thead>
 
-                <tr>
+<tr>
 
-                    <th>Veículo</th>
+<th>Cliente</th>
 
-                    <th>Status</th>
+<th>Status</th>
 
-                </tr>
+</tr>
 
-                </thead>
+</thead>
 
-                <tbody>
+<tbody>
 
-                <tr>
+<?php foreach($ultimosOrcamentos as $orc): ?>
 
-                    <td>Corolla</td>
+<tr>
 
-                    <td>
-                        <span class="badge bg-primary">
-                            Transporte
-                        </span>
-                    </td>
+<td>
 
-                </tr>
+<?= htmlspecialchars($orc['nome']); ?>
 
-                <tr>
+</td>
 
-                    <td>HB20</td>
+<td>
 
-                    <td>
-                        <span class="badge bg-warning">
-                            Fornecedor
-                        </span>
-                    </td>
+<span class="badge bg-warning">
 
-                </tr>
+<?= $orc['status']; ?>
 
-                </tbody>
+</span>
 
-            </table>
+</td>
+
+</tr>
+
+<?php endforeach; ?>
+
+</tbody>
+
+</table>
 
         </div>
 
     </div>
 
 </div>
+
+
+
+<script>
+
+const ctx=document.getElementById('graficoServicos');
+
+if(ctx){
+
+new Chart(ctx,{
+
+type:'doughnut',
+
+data:{
+
+labels:<?= json_encode($labels) ?>,
+
+datasets:[{
+
+data:<?= json_encode($dados) ?>
+
+}]
+
+},
+
+options:{
+
+responsive:true,
+
+plugins:{
+
+legend:{
+
+position:'bottom'
+
+}
+
+}
+
+}
+
+});
+
+}
+
+</script>

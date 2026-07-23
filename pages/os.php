@@ -515,6 +515,113 @@ Adicionar Peça
 
 <div class="row mt-4">
 
+<hr class="mt-5">
+
+<h5>
+
+Serviços Executados
+
+</h5>
+
+<table
+class="table table-bordered align-middle"
+id="tabelaServicos">
+
+<thead class="table-light">
+
+<tr>
+
+<th>Descrição</th>
+
+<th>Funcionário</th>
+
+<th width="90">Horas</th>
+
+<th width="130">Valor</th>
+
+<th width="170">Status</th>
+
+</tr>
+
+</thead>
+
+<tbody>
+
+<tr>
+
+<td>
+
+<input
+type="text"
+name="descricao_servico[]"
+class="form-control">
+
+</td>
+
+<td>
+
+<input
+type="text"
+name="funcionario[]"
+class="form-control">
+
+</td>
+
+<td>
+
+<input
+type="number"
+step="0.5"
+min="0"
+name="horas[]"
+class="form-control">
+
+</td>
+
+<td>
+
+<input
+type="number"
+step="0.01"
+min="0"
+name="valor_servico[]"
+class="form-control">
+
+</td>
+
+<td>
+
+<select
+name="status_servico[]"
+class="form-select">
+
+<option>Pendente</option>
+
+<option>Executando</option>
+
+<option>Concluído</option>
+
+</select>
+
+</td>
+
+</tr>
+
+</tbody>
+
+</table>
+
+<button
+type="button"
+class="btn btn-primary btn-sm"
+id="adicionarServico">
+
+<i class="bi bi-plus-circle"></i>
+
+Adicionar Serviço
+
+</button>
+
 <div class="col-md-4 ms-auto">
 
 <table class="table">
@@ -749,6 +856,25 @@ document.getElementById("adicionarPeca").addEventListener("click",function(){
     tbody.appendChild(linha);
 
     ativarEventos();
+
+});
+
+
+document.getElementById("adicionarServico").addEventListener("click",function(){
+
+    let tbody=document.querySelector("#tabelaServicos tbody");
+
+    let linha=tbody.rows[0].cloneNode(true);
+
+    linha.querySelectorAll("input").forEach(function(input){
+
+        input.value="";
+
+    });
+
+    linha.querySelector("select").selectedIndex=0;
+
+    tbody.appendChild(linha);
 
 });
 

@@ -74,6 +74,34 @@ $_POST['observacoes']
 
 $idOS = $conn->lastInsertId();
 
+
+
+
+/* Histórico */
+
+$sqlHistorico = $conn->prepare("
+INSERT INTO historico_os
+(
+    id_os,
+    descricao,
+    usuario
+)
+VALUES
+(
+    ?,?,?
+)
+");
+
+$sqlHistorico->execute([
+
+    $idOS,
+
+    'Ordem de Serviço criada no sistema.',
+
+    'Administrador'
+
+]);
+
 /* Salvar peças da O.S. */
 
 if(isset($_POST['peca'])){
@@ -102,6 +130,53 @@ if(isset($_POST['peca'])){
             $idOS,
             $peca,
             $_POST['quantidade'][$i]
+
+        ]);
+
+    }
+
+}
+
+
+/* Salvar serviços da O.S. */
+
+if(isset($_POST['descricao_servico'])){
+
+    $sqlServico = $conn->prepare("
+        INSERT INTO os_servicos
+        (
+            id_os,
+            descricao,
+            funcionario,
+            horas,
+            valor,
+            status
+        )
+        VALUES
+        (
+            ?,?,?,?,?,?
+        )
+    ");
+
+    foreach($_POST['descricao_servico'] as $i => $descricao){
+
+        if(trim($descricao) == ''){
+            continue;
+        }
+
+        $sqlServico->execute([
+
+            $idOS,
+
+            $descricao,
+
+            $_POST['funcionario'][$i],
+
+            $_POST['horas'][$i],
+
+            $_POST['valor_servico'][$i],
+
+            $_POST['status_servico'][$i]
 
         ]);
 
