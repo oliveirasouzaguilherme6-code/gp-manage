@@ -4,71 +4,147 @@ require_once "../vendor/autoload.php";
 require_once "../config/database.php";
 
 use Dompdf\Dompdf;
+use Dompdf\Options;
+
+/* =========================================
+   BANCO
+========================================= */
 
 $db = new Database();
 $conn = $db->connect();
 
-$id = $_GET['id'];
+/* =========================================
+   VALIDAR ID
+========================================= */
+
+$id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
+
+if (!$id) {
+    die("Ordem de Serviço inválida.");
+}
+
+/* =========================================
+   BUSCAR ORDEM
+========================================= */
 
 $sql = $conn->prepare("
+    SELECT
+        os.*,
 
-SELECT
+        c.nome,
+        c.telefone,
+        c.cpf,
+        c.email,
+        c.endereco,
 
-os.*,
+        v.modelo,
+        v.marca,
+        v.placa,
+        v.ano,
+        v.cor
 
-c.nome,
-c.telefone,
-c.email,
-c.cidade,
+    FROM ordens_servico os
 
-v.modelo,
-v.placa,
-v.marca,
-v.ano
+    INNER JOIN clientes c
+        ON c.id_cliente = os.id_cliente
 
-FROM ordens_servico os
+    INNER JOIN veiculos v
+        ON v.id_veiculo = os.id_veiculo
 
-INNER JOIN clientes c
-ON c.id_cliente=os.id_cliente
-
-INNER JOIN veiculos v
-ON v.id_veiculo=os.id_veiculo
-
-WHERE os.id_os=?
-
+    WHERE os.id_os = ?
 ");
 
 $sql->execute([$id]);
 
 $os = $sql->fetch(PDO::FETCH_ASSOC);
 
-$pecas = $conn->prepare("
+if (!$os) {
+    die("Ordem de Serviço não encontrada.");
+}
 
-SELECT
+/* =========================================
+   PEÇAS
+========================================= */
 
-op.*,
+$sqlPecas = $conn->prepare("
+    SELECT
+        op.*,
+        p.peca
 
-p.peca
+    FROM os_pecas op
 
-FROM os_pecas op
+    INNER JOIN pecas p
+        ON p.id_peca = op.id_peca
 
-INNER JOIN pecas p
-
-ON p.id_peca=op.id_peca
-
-WHERE op.id_os=?
-
+    WHERE op.id_os = ?
 ");
 
-$pecas->execute([$id]);
+$sqlPecas->execute([$id]);
 
-$listaPecas = $pecas->fetchAll(PDO::FETCH_ASSOC);
+$pecas = $sqlPecas->fetchAll(PDO::FETCH_ASSOC);
 
-$html='
+/* =========================================
+   SERVIÇOS
+========================================= */
+
+$sqlServicos = $conn->prepare("
+    SELECT *
+    FROM os_servicos
+    WHERE id_os = ?
+    ORDER BY id ASC
+");
+
+$sqlServicos->execute([$id]);
+
+$servicos = $sqlServicos->fetchAll(PDO::FETCH_ASSOC);
+
+/* =========================================
+   FUNÇÕES
+========================================= */
+
+function e($valor)
+{
+    return htmlspecialchars(
+        (string)($valor ?? ''),
+        ENT_QUOTES,
+        'UTF-8'
+    );
+}
+
+function dataBR($data)
+{
+    if (empty($data) || $data === '0000-00-00') {
+        return '-';
+    }
+
+    $timestamp = strtotime($data);
+
+    if (!$timestamp) {
+        return '-';
+    }
+
+    return date('d/m/Y', $timestamp);
+}
+
+function moeda($valor)
+{
+    return 'R$ ' . number_format(
+        (float)($valor ?? 0),
+        2,
+        ',',
+        '.'
+    );
+}
+
+/* =========================================
+   HTML DO PDF
+========================================= */
+
+$html = '
 
 <!DOCTYPE html>
 
-<html>
+<html lang="pt-BR">
 
 <head>
 
@@ -76,76 +152,182 @@ $html='
 
 <style>
 
-body{
-
-font-family:Arial,Helvetica,sans-serif;
-
-font-size:13px;
-
-color:#333;
-
+@page {
+    margin: 28px 35px;
 }
 
-h1{
-
-text-align:center;
-
-margin-bottom:5px;
-
+* {
+    box-sizing: border-box;
 }
 
-h3{
-
-margin-top:25px;
-
-margin-bottom:8px;
-
+body {
+    font-family: DejaVu Sans, sans-serif;
+    font-size: 11px;
+    color: #252525;
+    margin: 0;
 }
 
-table{
-
-width:100%;
-
-border-collapse:collapse;
-
-margin-top:10px;
-
+.header {
+    width: 100%;
+    border-bottom: 3px solid #222;
+    padding-bottom: 14px;
+    margin-bottom: 20px;
 }
 
-table th{
-
-background:#f3f3f3;
-
-padding:8px;
-
-border:1px solid #ccc;
-
+.header-table {
+    width: 100%;
+    border-collapse: collapse;
 }
 
-table td{
-
-padding:8px;
-
-border:1px solid #ccc;
-
+.header-table td {
+    border: none;
+    padding: 0;
 }
 
-.info{
-
-margin-top:20px;
-
+.title {
+    font-size: 24px;
+    font-weight: bold;
+    letter-spacing: 1px;
 }
 
-.total{
+.os-number {
+    text-align: right;
+    font-size: 17px;
+    font-weight: bold;
+}
 
-margin-top:20px;
+.subtitle {
+    color: #777;
+    font-size: 10px;
+    margin-top: 4px;
+}
 
-text-align:right;
+.section {
+    margin-top: 18px;
+}
 
-font-size:18px;
+.section-title {
+    background: #252525;
+    color: #ffffff;
+    padding: 7px 10px;
+    font-size: 12px;
+    font-weight: bold;
+    text-transform: uppercase;
+}
 
-font-weight:bold;
+.info-table {
+    width: 100%;
+    border-collapse: collapse;
+}
 
+.info-table td {
+    border: 1px solid #d5d5d5;
+    padding: 7px;
+    vertical-align: top;
+}
+
+.label {
+    font-size: 9px;
+    color: #777;
+    text-transform: uppercase;
+    margin-bottom: 3px;
+}
+
+.value {
+    font-size: 11px;
+    font-weight: bold;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.data-table th {
+    background: #eeeeee;
+    border: 1px solid #cccccc;
+    padding: 7px;
+    font-size: 10px;
+    text-align: left;
+}
+
+.data-table td {
+    border: 1px solid #d5d5d5;
+    padding: 7px;
+    font-size: 10px;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.text-right {
+    text-align: right;
+}
+
+.empty {
+    text-align: center;
+    color: #888;
+    padding: 12px !important;
+}
+
+.observacoes {
+    border: 1px solid #d5d5d5;
+    padding: 10px;
+    min-height: 45px;
+    line-height: 1.5;
+}
+
+.total-box {
+    width: 45%;
+    margin-left: 55%;
+    margin-top: 18px;
+}
+
+.total-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.total-table td {
+    padding: 7px;
+    border-bottom: 1px solid #dddddd;
+}
+
+.grand-total td {
+    background: #252525;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: bold;
+    border: none;
+}
+
+.signatures {
+    width: 100%;
+    margin-top: 55px;
+    border-collapse: collapse;
+}
+
+.signatures td {
+    width: 50%;
+    border: none;
+    padding: 0 25px;
+    text-align: center;
+}
+
+.signature-line {
+    border-top: 1px solid #555;
+    padding-top: 5px;
+    font-size: 9px;
+}
+
+.footer {
+    margin-top: 30px;
+    padding-top: 8px;
+    border-top: 1px solid #cccccc;
+    text-align: center;
+    font-size: 8px;
+    color: #777;
 }
 
 </style>
@@ -154,171 +336,544 @@ font-weight:bold;
 
 <body>
 
-<h1>
 
-ORDEM DE SERVIÇO
+<div class="header">
 
-</h1>
+<table class="header-table">
 
-<hr>
+<tr>
 
-<div class="info">
+<td>
 
-<strong>Número:</strong>
+<div class="title">
+GP MANAGER
+</div>
 
-'.$os["numero_os"].'
+<div class="subtitle">
+Ordem de Serviço
+</div>
 
-<br>
+</td>
 
-<strong>Data:</strong>
+<td class="os-number">
 
-'.$os["data_entrada"].'
+'.e($os['numero_os']).'
 
-<br>
+</td>
 
-<strong>Status:</strong>
+</tr>
 
-'.$os["status"].'
+</table>
 
 </div>
 
-<h3>
 
+<div class="section">
+
+<div class="section-title">
+Informações da Ordem
+</div>
+
+<table class="info-table">
+
+<tr>
+
+<td width="25%">
+
+<div class="label">
+Status
+</div>
+
+<div class="value">
+'.e($os['status']).'
+</div>
+
+</td>
+
+<td width="25%">
+
+<div class="label">
+Etapa
+</div>
+
+<div class="value">
+'.e($os['etapa']).'
+</div>
+
+</td>
+
+<td width="25%">
+
+<div class="label">
+Entrada
+</div>
+
+<div class="value">
+'.dataBR($os['entrada']).'
+</div>
+
+</td>
+
+<td width="25%">
+
+<div class="label">
+Previsão
+</div>
+
+<div class="value">
+'.dataBR($os['previsao']).'
+</div>
+
+</td>
+
+</tr>
+
+</table>
+
+</div>
+
+
+<div class="section">
+
+<div class="section-title">
 Cliente
+</div>
 
-</h3>
+<table class="info-table">
 
-<strong>'.$os["nome"].'</strong>
+<tr>
 
-<br>
+<td width="50%">
 
-Telefone:
+<div class="label">
+Nome
+</div>
 
-'.$os["telefone"].'
+<div class="value">
+'.e($os['nome']).'
+</div>
 
-<br>
+</td>
 
-Email:
+<td width="25%">
 
-'.$os["email"].'
+<div class="label">
+CPF
+</div>
 
-<br>
+<div class="value">
+'.e($os['cpf']).'
+</div>
 
-Cidade:
+</td>
 
-'.$os["cidade"].'
+<td width="25%">
 
-<h3>
+<div class="label">
+Telefone
+</div>
 
+<div class="value">
+'.e($os['telefone']).'
+</div>
+
+</td>
+
+</tr>
+
+<tr>
+
+<td colspan="2">
+
+<div class="label">
+E-mail
+</div>
+
+<div class="value">
+'.e($os['email']).'
+</div>
+
+</td>
+
+<td>
+
+<div class="label">
+Endereço
+</div>
+
+<div class="value">
+'.e($os['endereco']).'
+</div>
+
+</td>
+
+</tr>
+
+</table>
+
+</div>
+
+
+<div class="section">
+
+<div class="section-title">
 Veículo
+</div>
 
-</h3>
+<table class="info-table">
 
-Marca:
+<tr>
 
-'.$os["marca"].'
+<td width="20%">
 
-<br>
+<div class="label">
+Marca
+</div>
 
-Modelo:
+<div class="value">
+'.e($os['marca']).'
+</div>
 
-'.$os["modelo"].'
+</td>
 
-<br>
+<td width="25%">
 
-Placa:
+<div class="label">
+Modelo
+</div>
 
-'.$os["placa"].'
+<div class="value">
+'.e($os['modelo']).'
+</div>
 
-<br>
+</td>
 
-Ano:
+<td width="20%">
 
-'.$os["ano"].'
+<div class="label">
+Placa
+</div>
 
-<h3>
+<div class="value">
+'.e($os['placa']).'
+</div>
 
+</td>
+
+<td width="15%">
+
+<div class="label">
+Ano
+</div>
+
+<div class="value">
+'.e($os['ano']).'
+</div>
+
+</td>
+
+<td width="20%">
+
+<div class="label">
+Cor
+</div>
+
+<div class="value">
+'.e($os['cor']).'
+</div>
+
+</td>
+
+</tr>
+
+</table>
+
+</div>
+
+
+<div class="section">
+
+<div class="section-title">
 Peças Utilizadas
+</div>
 
-</h3>
+<table class="data-table">
 
-<table>
-
-<tr>
-
-<th>Peça</th>
-
-<th>Qtd</th>
-
-<th>Valor Unitário</th>
-
-<th>Total</th>
-
-</tr>
-
-';
-
-foreach($listaPecas as $item){
-
-$html .= '
+<thead>
 
 <tr>
 
-<td>'.$item["peca"].'</td>
+<th>
+Peça
+</th>
 
-<td align="center">'.$item["quantidade"].'</td>
+<th width="70" class="text-center">
+Qtd.
+</th>
 
-<td align="right">
+<th width="110" class="text-right">
+Valor Unit.
+</th>
 
-R$ '.number_format($item["valor_unitario"],2,",",".").'
-
-</td>
-
-<td align="right">
-
-R$ '.number_format($item["valor_total"],2,",",".").'
-
-</td>
+<th width="110" class="text-right">
+Total
+</th>
 
 </tr>
 
+</thead>
+
+<tbody>
+
 ';
 
+if (!empty($pecas)) {
+
+    foreach ($pecas as $peca) {
+
+        $html .= '
+
+        <tr>
+
+        <td>
+        '.e($peca['peca']).'
+        </td>
+
+        <td class="text-center">
+        '.e($peca['quantidade']).'
+        </td>
+
+        <td class="text-right">
+        '.moeda($peca['valor_unitario'] ?? 0).'
+        </td>
+
+        <td class="text-right">
+        '.moeda($peca['valor_total'] ?? 0).'
+        </td>
+
+        </tr>
+
+        ';
+    }
+
+} else {
+
+    $html .= '
+
+    <tr>
+
+    <td colspan="4" class="empty">
+    Nenhuma peça cadastrada nesta ordem.
+    </td>
+
+    </tr>
+
+    ';
 }
 
 $html .= '
 
+</tbody>
+
 </table>
 
-<div class="total">
+</div>
 
-Valor das Peças:
 
-R$ '.number_format($os["valor_pecas"],2,",",".").'
+<div class="section">
 
-<br><br>
+<div class="section-title">
+Serviços Executados
+</div>
 
-Valor dos Serviços:
+<table class="data-table">
 
-R$ '.number_format($os["valor_servicos"],2,",",".").'
+<thead>
 
-<br><br>
+<tr>
 
-TOTAL DA O.S.
+<th>
+Descrição
+</th>
 
-R$ '.number_format($os["valor_total"],2,",",".").'
+<th width="130">
+Funcionário
+</th>
+
+<th width="65" class="text-center">
+Horas
+</th>
+
+<th width="100" class="text-right">
+Valor
+</th>
+
+<th width="90">
+Status
+</th>
+
+</tr>
+
+</thead>
+
+<tbody>
+
+';
+
+if (!empty($servicos)) {
+
+    foreach ($servicos as $servico) {
+
+        $html .= '
+
+        <tr>
+
+        <td>
+        '.e($servico['descricao']).'
+        </td>
+
+        <td>
+        '.e($servico['funcionario']).'
+        </td>
+
+        <td class="text-center">
+        '.e($servico['horas']).'
+        </td>
+
+        <td class="text-right">
+        '.moeda($servico['valor']).'
+        </td>
+
+        <td>
+        '.e($servico['status']).'
+        </td>
+
+        </tr>
+
+        ';
+    }
+
+} else {
+
+    $html .= '
+
+    <tr>
+
+    <td colspan="5" class="empty">
+    Nenhum serviço cadastrado nesta ordem.
+    </td>
+
+    </tr>
+
+    ';
+}
+
+$html .= '
+
+</tbody>
+
+</table>
 
 </div>
 
-<br><br>
 
-<hr>
+<div class="section">
 
-<div style="text-align:center;font-size:12px;color:#666;">
+<div class="section-title">
+Observações
+</div>
 
-Documento gerado automaticamente pelo GP Manager.
+<div class="observacoes">
+'.(!empty($os['observacoes'])
+    ? nl2br(e($os['observacoes']))
+    : 'Nenhuma observação cadastrada.'
+).'
+</div>
 
 </div>
+
+
+<div class="total-box">
+
+<table class="total-table">
+
+<tr>
+
+<td>
+Peças
+</td>
+
+<td class="text-right">
+'.moeda($os['valor_pecas']).'
+</td>
+
+</tr>
+
+<tr>
+
+<td>
+Mão de Obra
+</td>
+
+<td class="text-right">
+'.moeda($os['valor_mao_obra']).'
+</td>
+
+</tr>
+
+<tr class="grand-total">
+
+<td>
+TOTAL
+</td>
+
+<td class="text-right">
+'.moeda($os['valor_total']).'
+</td>
+
+</tr>
+
+</table>
+
+</div>
+
+
+<table class="signatures">
+
+<tr>
+
+<td>
+
+<div class="signature-line">
+Responsável pela Oficina
+</div>
+
+</td>
+
+<td>
+
+<div class="signature-line">
+'.e($os['nome']).'
+<br>
+Cliente
+</div>
+
+</td>
+
+</tr>
+
+</table>
+
+
+<div class="footer">
+
+Documento gerado automaticamente pelo GP Manager
+<br>
+
+Ordem de Serviço '.e($os['numero_os']).'
+
+</div>
+
 
 </body>
 
@@ -326,20 +881,41 @@ Documento gerado automaticamente pelo GP Manager.
 
 ';
 
-$dompdf = new Dompdf();
+/* =========================================
+   CONFIGURAR DOMPDF
+========================================= */
 
-$dompdf->loadHtml($html);
+$options = new Options();
 
-$dompdf->setPaper("A4","portrait");
+$options->set('isRemoteEnabled', true);
+$options->set('defaultFont', 'DejaVu Sans');
+
+$dompdf = new Dompdf($options);
+
+/* =========================================
+   GERAR PDF
+========================================= */
+
+$dompdf->loadHtml($html, 'UTF-8');
+
+$dompdf->setPaper('A4', 'portrait');
 
 $dompdf->render();
 
+/* Limpa qualquer saída anterior */
+while (ob_get_level()) {
+    ob_end_clean();
+}
+
+/* =========================================
+   EXIBIR PDF
+========================================= */
+
 $dompdf->stream(
-
-"OS-".$os["numero_os"].".pdf",
-
-["Attachment"=>false]
-
+    'OS-' . $os['numero_os'] . '.pdf',
+    [
+        'Attachment' => false
+    ]
 );
 
 exit;

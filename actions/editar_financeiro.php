@@ -5,21 +5,57 @@ require_once "../config/database.php";
 $db = new Database();
 $conn = $db->connect();
 
-$id = intval($_GET['id']);
+/*
+|--------------------------------------------------------------------------
+| VALIDAR ID
+|--------------------------------------------------------------------------
+*/
+
+if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
+    header("Location: ../index.php?page=financeiro&erro=1");
+    exit;
+}
+
+$id = (int) $_GET['id'];
+
+/*
+|--------------------------------------------------------------------------
+| BUSCAR LANÇAMENTO
+|--------------------------------------------------------------------------
+*/
 
 $sql = $conn->prepare("
-SELECT *
-FROM financeiro
-WHERE id_financeiro=?
+    SELECT *
+    FROM financeiro
+    WHERE id_financeiro = ?
+    LIMIT 1
 ");
 
 $sql->execute([$id]);
 
 $f = $sql->fetch(PDO::FETCH_ASSOC);
 
-if(!$f){
-    die("Lançamento não encontrado.");
+if (!$f) {
+    header("Location: ../index.php?page=financeiro&erro=1");
+    exit;
 }
+
+function e($valor)
+{
+    return htmlspecialchars(
+        (string) ($valor ?? ''),
+        ENT_QUOTES,
+        'UTF-8'
+    );
+}
+
+$formas = [
+    "Pix",
+    "Dinheiro",
+    "Cartão",
+    "Boleto",
+    "Transferência"
+];
 
 ?>
 
@@ -29,177 +65,335 @@ if(!$f){
 
 <head>
 
-<meta charset="UTF-8">
+    <meta charset="UTF-8">
 
-<title>Editar Financeiro</title>
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
 
-<link
-href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-rel="stylesheet">
+    <title>Editar Lançamento | GP Manager</title>
+
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+    >
+
+    <link
+        rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+    >
+
+    <style>
+
+        body {
+            background: #f4f6f9;
+        }
+
+        .edit-container {
+            max-width: 900px;
+            margin: 50px auto;
+        }
+
+        .card {
+            border: 0;
+            border-radius: 14px;
+            overflow: hidden;
+        }
+
+        .card-header {
+            background: #ffffff;
+            padding: 22px 25px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .card-header h4 {
+            margin: 0;
+            font-weight: 700;
+        }
+
+        .card-body {
+            padding: 30px;
+        }
+
+        .form-label {
+            font-weight: 600;
+            margin-bottom: 7px;
+        }
+
+        .form-control,
+        .form-select {
+            min-height: 45px;
+        }
+
+        textarea.form-control {
+            min-height: 100px;
+        }
+
+    </style>
 
 </head>
 
-<body class="bg-light">
+<body>
 
-<div class="container mt-5">
+<div class="container">
 
-<div class="card shadow">
+    <div class="edit-container">
 
-<div class="card-header">
+        <div class="card shadow-sm">
 
-<h4>Editar Lançamento</h4>
+            <div class="card-header">
 
-</div>
+                <h4>
+                    <i class="bi bi-pencil-square me-2"></i>
+                    Editar Lançamento
+                </h4>
 
-<div class="card-body">
+            </div>
 
-<form action="salvar_edicao_financeiro.php" method="POST">
+            <div class="card-body">
 
-<input
-type="hidden"
-name="id_financeiro"
-value="<?=$f['id_financeiro']?>">
+                <form
+                    action="salvar_edicao_financeiro.php"
+                    method="POST"
+                >
 
-<label>Tipo</label>
+                    <input
+                        type="hidden"
+                        name="id_financeiro"
+                        value="<?= (int) $f['id_financeiro'] ?>"
+                    >
 
-<select
-name="tipo"
-class="form-select">
+                    <!-- TIPO -->
 
-<option value="Receita" <?=$f['tipo']=="Receita"?"selected":""?>>
+                    <div class="mb-3">
 
-Receber
+                        <label class="form-label">
+                            Tipo
+                        </label>
 
-</option>
+                        <select
+                            name="tipo"
+                            class="form-select"
+                            required
+                        >
 
-<option value="Despesa" <?=$f['tipo']=="Despesa"?"selected":""?>>
+                            <option
+                                value="Receita"
+                                <?= $f['tipo'] === "Receita" ? "selected" : "" ?>
+                            >
+                                Receita / Receber
+                            </option>
 
-Pagar
+                            <option
+                                value="Despesa"
+                                <?= $f['tipo'] === "Despesa" ? "selected" : "" ?>
+                            >
+                                Despesa / Pagar
+                            </option>
 
-</option>
+                        </select>
 
-</select>
+                    </div>
 
-<label class="mt-3">
+                    <!-- CATEGORIA -->
 
-Descrição
+                    <div class="mb-3">
 
-</label>
+                        <label class="form-label">
+                            Categoria
+                        </label>
 
-<input
-type="text"
-name="descricao"
-class="form-control"
-value="<?=$f['descricao']?>">
+                        <input
+                            type="text"
+                            name="categoria"
+                            class="form-control"
+                            maxlength="100"
+                            value="<?= e($f['categoria']) ?>"
+                            required
+                        >
 
-<label class="mt-3">
+                    </div>
 
-Valor
+                    <!-- DESCRIÇÃO -->
 
-</label>
+                    <div class="mb-3">
 
-<input
-type="number"
-step="0.01"
-name="valor"
-class="form-control"
-value="<?=$f['valor']?>">
+                        <label class="form-label">
+                            Descrição
+                        </label>
 
-<label class="mt-3">
+                        <input
+                            type="text"
+                            name="descricao"
+                            class="form-control"
+                            maxlength="255"
+                            value="<?= e($f['descricao']) ?>"
+                            required
+                        >
 
-Data Vencimento
+                    </div>
 
-</label>
+                    <div class="row">
 
-<input
-type="date"
-name="data_vencimento"
-class="form-control"
-value="<?=$f['data_vencimento']?>">
+                        <!-- VALOR -->
 
-<label class="mt-3">
+                        <div class="col-md-6 mb-3">
 
-Forma Pagamento
+                            <label class="form-label">
+                                Valor
+                            </label>
 
-</label>
+                            <input
+                                type="number"
+                                name="valor"
+                                class="form-control"
+                                step="0.01"
+                                min="0.01"
+                                value="<?= e($f['valor']) ?>"
+                                required
+                            >
 
-<select
-name="forma_pagamento"
-class="form-select">
+                        </div>
 
-<?php
+                        <!-- VENCIMENTO -->
 
-$formas=[
-"Pix",
-"Dinheiro",
-"Cartão",
-"Boleto",
-"Transferência"
-];
+                        <div class="col-md-6 mb-3">
 
-foreach($formas as $forma){
+                            <label class="form-label">
+                                Data de Vencimento
+                            </label>
 
-$selected=$forma==$f['forma_pagamento']?"selected":"";
+                            <input
+                                type="date"
+                                name="data_vencimento"
+                                class="form-control"
+                                value="<?= e($f['data_vencimento']) ?>"
+                            >
 
-echo "<option $selected>$forma</option>";
+                        </div>
 
-}
+                    </div>
 
-?>
+                    <div class="row">
 
-</select>
+                        <!-- PAGAMENTO -->
 
-<label class="mt-3">
+                        <div class="col-md-6 mb-3">
 
-Status
+                            <label class="form-label">
+                                Forma de Pagamento
+                            </label>
 
-</label>
+                            <select
+                                name="forma_pagamento"
+                                class="form-select"
+                            >
 
-<select
-name="status"
-class="form-select">
+                                <option value="">
+                                    Selecione
+                                </option>
 
-<option <?=$f['status']=="Pendente"?"selected":""?>>
+                                <?php foreach ($formas as $forma): ?>
 
-Pendente
+                                    <option
+                                        value="<?= e($forma) ?>"
+                                        <?= $f['forma_pagamento'] === $forma ? "selected" : "" ?>
+                                    >
+                                        <?= e($forma) ?>
+                                    </option>
 
-</option>
+                                <?php endforeach; ?>
 
-<option <?=$f['status']=="Pago"?"selected":""?>>
+                            </select>
 
-Pago
+                        </div>
 
-</option>
+                        <!-- STATUS -->
 
-<option <?=$f['status']=="Cancelado"?"selected":""?>>
+                        <div class="col-md-6 mb-3">
 
-Cancelado
+                            <label class="form-label">
+                                Status
+                            </label>
 
-</option>
+                            <select
+                                name="status"
+                                class="form-select"
+                                required
+                            >
 
-</select>
+                                <option
+                                    value="Pendente"
+                                    <?= $f['status'] === "Pendente" ? "selected" : "" ?>
+                                >
+                                    Pendente
+                                </option>
 
-<br>
+                                <option
+                                    value="Pago"
+                                    <?= $f['status'] === "Pago" ? "selected" : "" ?>
+                                >
+                                    Pago
+                                </option>
 
-<button class="btn btn-success">
+                                <option
+                                    value="Cancelado"
+                                    <?= $f['status'] === "Cancelado" ? "selected" : "" ?>
+                                >
+                                    Cancelado
+                                </option>
 
-Salvar Alterações
+                            </select>
 
-</button>
+                        </div>
 
-<a
-href="../index.php?page=financeiro"
-class="btn btn-secondary">
+                    </div>
 
-Cancelar
+                    <!-- OBSERVAÇÕES -->
 
-</a>
+                    <div class="mb-4">
 
-</form>
+                        <label class="form-label">
+                            Observações
+                        </label>
 
-</div>
+                        <textarea
+                            name="observacoes"
+                            class="form-control"
+                            rows="4"
+                        ><?= e($f['observacoes']) ?></textarea>
 
-</div>
+                    </div>
+
+                    <!-- BOTÕES -->
+
+                    <div class="d-flex gap-2">
+
+                        <button
+                            type="submit"
+                            class="btn btn-success"
+                        >
+                            <i class="bi bi-check-circle me-1"></i>
+                            Salvar Alterações
+                        </button>
+
+                        <a
+                            href="../index.php?page=financeiro"
+                            class="btn btn-secondary"
+                        >
+                            Cancelar
+                        </a>
+
+                    </div>
+
+                </form>
+
+            </div>
+
+        </div>
+
+    </div>
 
 </div>
 

@@ -5,61 +5,245 @@ require_once "../config/database.php";
 $db = new Database();
 $conn = $db->connect();
 
-$id = $_POST['id_peca'];
-$tipo = $_POST['tipo'];
-$qtd = (int)$_POST['quantidade'];
-$obs = $_POST['observacao'];
+/*
+|--------------------------------------------------------------------------
+| ACEITAR SOMENTE POST
+|--------------------------------------------------------------------------
+*/
 
-$conn->beginTransaction();
+if ($_SERVER["REQUEST_METHOD"] !== "POST") {
+    header("Location: ../index.php?page=pecas");
+    exit;
+}
 
-if($tipo == "Entrada"){
+/*
+|--------------------------------------------------------------------------
+| RECEBER DADOS
+|--------------------------------------------------------------------------
+*/
 
-    $conn->prepare("
-    UPDATE pecas
-    SET estoque = estoque + ?
-    WHERE id_peca = ?
-    ")->execute([$qtd,$id]);
+$id = filter_input(
+    INPUT_POST,
+    "id_peca",
+    FILTER_VALIDATE_INT
+);
 
-}else{
+$tipo = trim($_POST["tipo"] ?? "");
 
-    $estoque = $conn->prepare("
-    SELECT estoque
-    FROM pecas
-    WHERE id_peca=?
+$quantidade = filter_input(
+    INPUT_POST,
+    "quantidade",
+    FILTER_VALIDATE_INT
+);
+
+$observacao = trim(
+    $_POST["observacao"] ?? ""
+);
+
+/*
+|--------------------------------------------------------------------------
+| VALIDAR DADOS
+|--------------------------------------------------------------------------
+*/
+
+if (!$id || $id <= 0) {
+
+    header(
+        "Location: ../index.php?page=pecas&erro=peca_invalida"
+    );
+
+    exit;
+}
+
+if (
+    !$quantidade ||
+    $quantidade <= 0
+) {
+
+    header(
+        "Location: ../index.php?page=pecas&erro=quantidade"
+    );
+
+    exit;
+}
+
+$tiposPermitidos = [
+    "Entrada",
+    "Saida"
+];
+
+if (!in_array(
+    $tipo,
+    $tiposPermitidos,
+    true
+)) {
+
+    header(
+        "Location: ../index.php?page=pecas&erro=tipo"
+    );
+
+    exit;
+}
+
+/*
+|--------------------------------------------------------------------------
+| TRANSAÇÃO
+|--------------------------------------------------------------------------
+*/
+
+try {
+
+    $conn->beginTransaction();
+
+    /*
+    |--------------------------------------------------------------------------
+    | BUSCAR PEÇA E BLOQUEAR REGISTRO
+    |--------------------------------------------------------------------------
+    */
+
+    $sql = $conn->prepare("
+        SELECT
+            id_peca,
+            peca,
+            estoque
+        FROM pecas
+        WHERE id_peca = ?
+        FOR UPDATE
     ");
 
-    $estoque->execute([$id]);
+    $sql->execute([$id]);
 
-    $atual = $estoque->fetch(PDO::FETCH_ASSOC);
+    $peca = $sql->fetch(
+        PDO::FETCH_ASSOC
+    );
 
-    if($atual['estoque'] < $qtd){
+    /*
+    |--------------------------------------------------------------------------
+    | PEÇA NÃO ENCONTRADA
+    |--------------------------------------------------------------------------
+    */
 
-        die("Estoque insuficiente.");
+    if (!$peca) {
+
+        $conn->rollBack();
+
+        header(
+            "Location: ../index.php?page=pecas&erro=nao_encontrada"
+        );
+
+        exit;
+    }
+
+    $estoqueAtual = (int)$peca["estoque"];
+
+    /*
+    |--------------------------------------------------------------------------
+    | ENTRADA
+    |--------------------------------------------------------------------------
+    */
+
+    if ($tipo === "Entrada") {
+
+        $novoEstoque =
+            $estoqueAtual + $quantidade;
 
     }
 
-    $conn->prepare("
-    UPDATE pecas
-    SET estoque = estoque - ?
-    WHERE id_peca = ?
-    ")->execute([$qtd,$id]);
+    /*
+    |--------------------------------------------------------------------------
+    | SAÍDA
+    |--------------------------------------------------------------------------
+    */
 
+    else {
+
+        if ($estoqueAtual < $quantidade) {
+
+            $conn->rollBack();
+
+            header(
+                "Location: ../index.php?page=pecas&erro=estoque_insuficiente"
+            );
+
+            exit;
+        }
+
+        $novoEstoque =
+            $estoqueAtual - $quantidade;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | ATUALIZAR ESTOQUE
+    |--------------------------------------------------------------------------
+    */
+
+    $sql = $conn->prepare("
+        UPDATE pecas
+        SET estoque = ?
+        WHERE id_peca = ?
+    ");
+
+    $sql->execute([
+        $novoEstoque,
+        $id
+    ]);
+
+    /*
+    |--------------------------------------------------------------------------
+    | REGISTRAR MOVIMENTAÇÃO
+    |--------------------------------------------------------------------------
+    */
+
+    $sql = $conn->prepare("
+        INSERT INTO movimentacoes_estoque
+        (
+            id_peca,
+            tipo,
+            quantidade,
+            observacao
+        )
+        VALUES
+        (
+            ?,
+            ?,
+            ?,
+            ?
+        )
+    ");
+
+    $sql->execute([
+        $id,
+        $tipo,
+        $quantidade,
+        $observacao !== ""
+            ? $observacao
+            : null
+    ]);
+
+    /*
+    |--------------------------------------------------------------------------
+    | CONFIRMAR
+    |--------------------------------------------------------------------------
+    */
+
+    $conn->commit();
+
+    header(
+        "Location: ../index.php?page=pecas&sucesso=movimentacao"
+    );
+
+    exit;
+
+} catch (PDOException $e) {
+
+    if ($conn->inTransaction()) {
+        $conn->rollBack();
+    }
+
+    header(
+        "Location: ../index.php?page=pecas&erro=movimentacao"
+    );
+
+    exit;
 }
-
-$conn->prepare("
-INSERT INTO movimentacoes_estoque
-(id_peca,tipo,quantidade,observacao)
-VALUES (?,?,?,?)
-")->execute([
-
-$id,
-$tipo,
-$qtd,
-$obs
-
-]);
-
-$conn->commit();
-
-header("Location: ../index.php?page=pecas");
-exit;
